@@ -1,24 +1,14 @@
-# PAP — Perception, Abstraction, Planning
+# PAP (Perception-Abstraction-Planning)
 
-See `explanations.txt` for a full description of the approach.
+Symbolic, non-neural approach. Goal: interpretability and sample-efficiency,
+not raw performance.
 
-## Files
+## Pipeline
+1. `perception.py` — connected components, object detection on grid
+2. `abstraction.py` — diff between state before/after action, rule hypotheses
+3. `planner.py` — search (BFS/A*) toward identified goal state
 
-| File | Role |
-|---|---|
-| `perception.py` | Connected-component analysis; converts a raw grid into a list of `Object` instances |
-| `abstraction.py` | Diffs two object lists and infers symbolic action-effect rules |
-| `planner.py` | BFS/A* search over the symbolic state space toward a recognised goal |
-| `run.py` | Entry point — wires the three stages together against a live `arc_agi` environment |
-
-## Running
-
-```bash
-python approaches/pap/run.py
-```
-
-## Key data structures
-
-- `Object` — `{id, color, cells: set[tuple[int,int]], bbox, centroid}`
-- `WorldModel` — maps `action → list[SymbolicEffect]`
-- `SymbolicEffect` — `{object_selector, effect_type, params}`  e.g. `{color==RED, TRANSLATE, (0, -1)}`
+## Principles
+- No ML/neural networks in this folder — the whole point is interpretability
+- Prefer explicit rule templates over free-form pattern recognition
+- Status/progress: see README.md in this folder
