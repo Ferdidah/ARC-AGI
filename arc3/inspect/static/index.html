@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>arc3 inspector</title>
+<style>
+  :root {
+    --bg:#0d0f14; --panel:#161a22; --panel2:#1d2230; --line:#2a3242;
+    --txt:#dfe6f0; --dim:#8a94a6; --accent:#ff2d55; --accent2:#00e0c0;
+    --good:#2ECC40; --warn:#FFDC00;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+         background:var(--bg); color:var(--txt); }
+  header { padding:10px 16px; border-bottom:1px solid var(--line);
+           display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0; letter-spacing:.5px; }
+  header .meta { color:var(--dim); font-size:12px; }
+  .wrap { display:grid; grid-template-columns: 1fr 360px; gap:12px; padding:12px; }
+  .col { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+          padding:12px; }
+  .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px;
+             color:var(--dim); margin:0 0 8px; }
+  canvas { image-rendering:pixelated; background:#000; border-radius:6px;
+           display:block; max-width:100%; cursor:crosshair; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, select, button { background:var(--panel2); color:var(--txt);
+    border:1px solid var(--line); border-radius:6px; padding:6px 9px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent2); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .kv { display:grid; grid-template-columns:120px 1fr; gap:2px 10px; font-size:12px; }
+  .kv .k { color:var(--dim); }
+  .kv .v { color:var(--txt); font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px;
+          background:var(--panel2); border:1px solid var(--line); margin:1px; }
+  .swatch { display:inline-block; width:11px; height:11px; border-radius:2px;
+            vertical-align:-1px; margin-right:4px; border:1px solid #0006; }
+  .empty { color:var(--dim); font-style:italic; font-size:12px; }
+  .rel { font-size:12px; color:var(--txt); }
+  .rel b { color:var(--accent2); }
+  .tabs { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
+  .tab { padding:4px 9px; border-radius:6px; background:var(--panel2);
+         border:1px solid var(--line); cursor:pointer; font-size:11px; }
+  .tab.active { border-color:var(--accent2); color:var(--accent2); }
+  .future { opacity:.65; }
+  .future h2::after { content:" · not computed yet"; color:var(--warn);
+                      font-weight:normal; text-transform:none; letter-spacing:0; }
+  textarea { width:100%; height:80px; background:var(--panel2); color:var(--txt);
+             border:1px solid var(--line); border-radius:6px; font:11px monospace; padding:6px; }
+  .small { font-size:11px; color:var(--dim); }
+  #typebar { display:flex; flex-wrap:wrap; gap:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>arc3 <span style="color:var(--accent2)">inspector</span></h1>
+  <span class="meta" id="meta">—</span>
+  <span style="flex:1"></span>
+  <div class="controls">
+    <input id="gameName" placeholder="game id (e.g. vc33)" size="12">
+    <button onclick="loadGame()">load game</button>
+    <button onclick="loadDemo()">demo frame</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: game view + controls + future graph panels -->
+  <div class="col">
+    <div class="card">
+      <h2>Game view <span class="small" id="segLabel"></span></h2>
+      <canvas id="cv" width="512" height="512"></canvas>
+
+      <!-- PLAY CONTROLS (Slice 2) -->
+      <div class="controls" style="margin-top:10px; border-top:1px solid var(--line); padding-top:10px">
+        <span class="small">mode</span>
+        <button id="modeMe"   class="primary" onclick="setMode('me')">Me</button>
+        <button id="modeAgent" onclick="setMode('agent')">Agent</button>
+        <span style="flex:1"></span>
+        <span class="small" id="liveState">no live game</span>
+      </div>
+      <div class="controls" id="actionBar" style="margin-top:8px">
+        <span class="empty">Start a game to play (type an id above, “load game”).</span>
+      </div>
+      <div class="small" id="clickHint" style="margin-top:4px"></div>
+
+      <!-- INSPECT CONTROLS -->
+      <div class="controls" style="margin-top:10px; border-top:1px solid var(--line); padding-top:10px">
+        <label class="small">segmentation</label>
+        <select id="seg" onchange="setConfig()">
+          <option value="connectivity-4">connectivity-4</option>
+          <option value="connectivity-8">connectivity-8</option>
+          <option value="color-class">color-class</option>
+        </select>
+        <label class="small">background</label>
+        <input id="bg" value="auto" size="5" onchange="setConfig()">
+        <label class="small"><input type="checkbox" id="showAdj" checked onchange="draw()"> adjacency</label>
+        <label class="small"><input type="checkbox" id="showId" checked onchange="draw()"> ids</label>
+        <label class="small"><input type="checkbox" id="clickMode"> click=ACTION6</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Paste a frame</h2>
+      <textarea id="paste" placeholder="[[5,5,4],[6,6,0], ...]  rows of ints 0-15"></textarea>
+      <div style="margin-top:6px"><button class="primary" onclick="loadPaste()">load pasted frame</button></div>
+    </div>
+
+    <div class="card future">
+      <h2>Interaction graph</h2>
+      <div class="empty">Appears once the hypothesis engine (module 3) builds L2 edges.</div>
+    </div>
+    <div class="card future">
+      <h2>Goal &amp; action hypotheses</h2>
+      <div class="empty">Ranked guesses appear once goal/action inference exists.</div>
+    </div>
+    <div class="card future">
+      <h2>Simulation &amp; divergence</h2>
+      <div class="empty">Predicted-vs-actual frame appears once the simulator (module 5) exists.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: inspector + relations + types -->
+  <div class="col">
+    <div class="card">
+      <h2>Selected object</h2>
+      <div id="inspector"><div class="empty">Click an object in the grid.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Object types <span class="small">(same shape + colour)</span></h2>
+      <div id="typebar"></div>
+    </div>
+
+    <div class="card">
+      <h2>Relations of selected</h2>
+      <div id="relations"><div class="empty">Select an object to see its neighbours.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Substrate &amp; symmetry</h2>
+      <div id="substrate"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PX = 16;                 // base cell size in px (scaled to fit)
+let SNAP = null;               // current snapshot
+let SELECTED = null;           // selected object id
+let CELL = 16;                 // computed cell size for drawing
+
+const $ = id => document.getElementById(id);
+
+async function api(path, body){
+  const opt = body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {};
+  const r = await fetch(path, opt);
+  return r.json();
+}
+
+async function refresh(){ SNAP = await api('/api/snapshot'); render(); }
+async function loadDemo(){ stopAgent(); SNAP = await api('/api/load',{source:'demo'}); SELECTED=null; render(); }
+async function loadGame(){
+  const g = $('gameName').value.trim(); if(!g) return;
+  stopAgent();
+  $('meta').textContent = 'starting '+g+' …';
+  SNAP = await api('/api/start_game',{game:g});
+  SELECTED=null; render();
+}
+async function loadPaste(){
+  let rows;
+  try { rows = JSON.parse($('paste').value); }
+  catch(e){ alert('Could not parse — must be JSON rows like [[5,5,4],[6,6,0]]'); return; }
+  stopAgent();
+  SNAP = await api('/api/load',{source:'paste', rows});
+  SELECTED=null; render();
+}
+async function setConfig(){
+  SNAP = await api('/api/config',{segmentation_rule:$('seg').value, background:$('bg').value});
+  SELECTED=null; render();
+}
+
+// ---- live play (Slice 2) ----
+let MODE = 'me';
+let AGENT_TIMER = null;
+
+function setMode(m){
+  MODE = m;
+  $('modeMe').className = (m==='me') ? 'primary' : '';
+  $('modeAgent').className = (m==='agent') ? 'primary' : '';
+  if(m==='agent') startAgent(); else stopAgent();
+  renderActionBar();
+}
+
+function startAgent(){
+  if(AGENT_TIMER || !SNAP || !SNAP.is_live) return;
+  AGENT_TIMER = setInterval(async ()=>{
+    if(SNAP && (SNAP.state==='WIN' || SNAP.state==='GAME_OVER')){ return; }
+    SNAP = await api('/api/agent_step', {});
+    render();
+  }, 600);  // turn-based → polling at ~1.7Hz is plenty
+}
+function stopAgent(){ if(AGENT_TIMER){ clearInterval(AGENT_TIMER); AGENT_TIMER=null; } }
+
+async function doAction(id, x, y){
+  if(!SNAP || !SNAP.is_live) return;
+  const body = {id}; if(x!=null){ body.x=x; body.y=y; }
+  SNAP = await api('/api/action', body);
+  render();
+}
+async function doReset(){ SNAP = await api('/api/reset', {}); SELECTED=null; render(); }
+
+function renderActionBar(){
+  const bar = $('actionBar');
+  if(!SNAP || !SNAP.is_live){
+    bar.innerHTML = '<span class="empty">Start a game to play (type an id above, “load game”).</span>';
+    $('liveState').textContent = 'no live game';
+    $('clickHint').textContent = '';
+    return;
+  }
+  $('liveState').textContent = `${SNAP.state||'?'} · score ${SNAP.score??'?'} · step ${SNAP.action_count??0}`;
+  if(MODE==='agent'){
+    bar.innerHTML = '<span class="small">agent is playing (random) — switch to “Me” to take over</span>';
+    $('clickHint').textContent = '';
+    return;
+  }
+  // human mode: render a button per available action
+  const labels = {1:'◀ A1',2:'▶ A2',3:'▲ A3',4:'▼ A4',5:'A5 �(interact)',6:'A6 (click)'};
+  const avail = SNAP.available_actions||[];
+  let html = avail.map(a=>{
+    if(a===6) return `<button onclick="toggleClick()">A6 click mode</button>`;
+    return `<button onclick="doAction(${a})">${labels[a]||('A'+a)}</button>`;
+  }).join(' ');
+  html += ` <button onclick="doReset()">⟳ reset</button>`;
+  bar.innerHTML = html;
+  $('clickHint').textContent = $('clickMode').checked
+    ? 'CLICK MODE ON — clicking the grid sends ACTION6 at that cell.'
+    : '';
+}
+
+function toggleClick(){ $('clickMode').checked = !$('clickMode').checked; renderActionBar(); }
+
+function render(){
+  if(SNAP.error){ $('meta').textContent = 'ERROR: '+SNAP.error; return; }
+  const m = [];
+  if(SNAP.game_id) m.push('game '+SNAP.game_id);
+  if(SNAP.state) m.push('state '+SNAP.state);
+  if(SNAP.score!=null) m.push('score '+SNAP.score);
+  m.push(SNAP.objects.length+' objects');
+  m.push('bg '+SNAP.background);
+  $('meta').textContent = m.join('  ·  ');
+  $('segLabel').textContent = SNAP.segmentation_rule;
+  drawTypes(); drawSubstrate(); draw(); renderInspector(); renderRelations(); renderActionBar();
+}
+
+// ---- canvas drawing ----
+function draw(){
+  if(!SNAP) return;
+  const H = SNAP.grid.length, W = SNAP.grid[0].length;
+  CELL = Math.max(4, Math.floor(512 / Math.max(H,W)));
+  const cv = $('cv'); cv.width = W*CELL; cv.height = H*CELL;
+  const ctx = cv.getContext('2d');
+  // cells
+  for(let r=0;r<H;r++) for(let c=0;c<W;c++){
+    ctx.fillStyle = SNAP.palette[SNAP.grid[r][c]] || '#f0f';
+    ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
+  }
+  // grid lines
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=1;
+  for(let r=0;r<=H;r++){ ctx.beginPath(); ctx.moveTo(0,r*CELL); ctx.lineTo(W*CELL,r*CELL); ctx.stroke(); }
+  for(let c=0;c<=W;c++){ ctx.beginPath(); ctx.moveTo(c*CELL,0); ctx.lineTo(c*CELL,H*CELL); ctx.stroke(); }
+  // adjacency edges
+  if($('showAdj').checked){
+    const byId = {}; SNAP.objects.forEach(o=>byId[o.id]=o);
+    ctx.strokeStyle='rgba(0,224,192,.8)'; ctx.fillStyle='rgba(0,224,192,.9)'; ctx.lineWidth=1.5;
+    SNAP.relations.adjacency.forEach(([a,b])=>{
+      const A=byId[a], B=byId[b]; if(!A||!B) return;
+      const ax=(A.centroid[1]+.5)*CELL, ay=(A.centroid[0]+.5)*CELL;
+      const bx=(B.centroid[1]+.5)*CELL, by=(B.centroid[0]+.5)*CELL;
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    });
+  }
+  // object bounding boxes
+  SNAP.objects.forEach(o=>{
+    const [r0,c0,r1,c1]=o.bbox;
+    const sel = (o.id===SELECTED);
+    ctx.strokeStyle = sel ? '#ff2d55' : 'rgba(255,45,85,.55)';
+    ctx.lineWidth = sel ? 3 : 1.4;
+    ctx.strokeRect(c0*CELL+1, r0*CELL+1, (c1-c0+1)*CELL-2, (r1-r0+1)*CELL-2);
+    if($('showId').checked){
+      ctx.fillStyle = sel ? '#ff2d55' : 'rgba(255,255,255,.85)';
+      ctx.font = `${Math.max(9,CELL*0.5)}px monospace`;
+      ctx.fillText('#'+o.id, c0*CELL+2, r0*CELL+Math.max(10,CELL*0.55));
+    }
+  });
+}
+
+// click → either send ACTION6 (play click-mode) or select an object
+$('cv').addEventListener('click', e=>{
+  if(!SNAP) return;
+  const rect = e.target.getBoundingClientRect();
+  const c = Math.floor((e.clientX-rect.left)/CELL);
+  const r = Math.floor((e.clientY-rect.top)/CELL);
+  // play click-mode: send ACTION6 at (x=col, y=row)
+  if(SNAP.is_live && MODE==='me' && $('clickMode').checked){
+    doAction(6, c, r);
+    return;
+  }
+  // otherwise: select the object containing this cell
+  let hit = null;
+  for(const o of SNAP.objects){
+    if(o.cells.some(([rr,cc])=>rr===r&&cc===c)){ hit=o.id; break; }
+  }
+  SELECTED = hit;
+  draw(); renderInspector(); renderRelations();
+});
+
+function colorChip(i){
+  const hex = SNAP.palette[i]||'#f0f';
+  return `<span class="swatch" style="background:${hex}"></span>${i}`;
+}
+
+function renderInspector(){
+  const el = $('inspector');
+  if(SELECTED==null){ el.innerHTML='<div class="empty">Click an object in the grid.</div>'; return; }
+  const o = SNAP.objects.find(x=>x.id===SELECTED);
+  const role = Object.keys(o.role_distribution||{}).length
+      ? Object.entries(o.role_distribution).map(([k,v])=>`${k} ${(v*100).toFixed(0)}%`).join(', ')
+      : '<span class="empty">unknown — ML role layer not built</span>';
+  el.innerHTML = `<div class="kv">
+    <div class="k">id</div><div class="v">#${o.id}</div>
+    <div class="k">type</div><div class="v">T${o.type_id}</div>
+    <div class="k">colours</div><div class="v">${o.colors.map(colorChip).join(' ')}</div>
+    <div class="k">area</div><div class="v">${o.area} cells</div>
+    <div class="k">bbox</div><div class="v">(${o.bbox[0]},${o.bbox[1]})→(${o.bbox[2]},${o.bbox[3]})</div>
+    <div class="k">size H×W</div><div class="v">${o.height} × ${o.width}</div>
+    <div class="k">centroid</div><div class="v">(${o.centroid[0]}, ${o.centroid[1]})</div>
+    <div class="k">solid rect?</div><div class="v">${o.is_rectangular_filled}</div>
+    <div class="k">grouping</div><div class="v">${o.grouping}</div>
+    <div class="k">role</div><div class="v">${role}</div>
+    <div class="k">confidence</div><div class="v">${o.confidence}</div>
+  </div>`;
+}
+
+function renderRelations(){
+  const el = $('relations');
+  if(SELECTED==null){ el.innerHTML='<div class="empty">Select an object to see its neighbours.</div>'; return; }
+  const id = SELECTED;
+  const dirs = SNAP.relations.directions;
+  const neigh = [];
+  dirs.forEach(d=>{
+    if(d.a===id) neigh.push(`<span class="rel">#${d.b} is <b>${d.dir}</b> of me</span>`);
+    if(d.b===id){ const opp={N:'S',S:'N',E:'W',W:'E'}[d.dir]; neigh.push(`<span class="rel">#${d.a} is <b>${opp}</b> of me</span>`); }
+  });
+  const align = SNAP.relations.alignment
+    .filter(x=>x.a===id||x.b===id)
+    .map(x=>`<span class="pill">#${x.a===id?x.b:x.a}: ${x.kinds.join('+')}-band</span>`);
+  const contain = SNAP.relations.containment
+    .filter(x=>x.outer===id||x.inner===id)
+    .map(x=> x.outer===id ? `<span class="pill">bbox-contains #${x.inner}</span>`
+                          : `<span class="pill">inside #${x.outer}'s bbox</span>`);
+  el.innerHTML = `
+    <div style="margin-bottom:6px"><b>neighbours</b><br>${neigh.length?neigh.join('<br>'):'<span class="empty">none</span>'}</div>
+    <div style="margin-bottom:6px"><b>alignment</b><br>${align.length?align.join(' '):'<span class="empty">none</span>'}</div>
+    <div><b>containment</b><br>${contain.length?contain.join(' '):'<span class="empty">none</span>'}</div>`;
+}
+
+function drawTypes(){
+  const el = $('typebar');
+  el.innerHTML = SNAP.types.map(t=>{
+    const hex = SNAP.palette[t.primary_color]||'#f0f';
+    return `<span class="pill" title="members: ${t.members.join(', ')}">
+      <span class="swatch" style="background:${hex}"></span>T${t.type_id}
+      <span class="small">×${t.members.length}</span></span>`;
+  }).join('');
+}
+
+function drawSubstrate(){
+  const syms = Object.entries(SNAP.grid_symmetries).filter(([k,v])=>v).map(([k])=>k);
+  $('substrate').innerHTML = `<div class="kv">
+    <div class="k">shape</div><div class="v">${SNAP.grid.length} × ${SNAP.grid[0].length}</div>
+    <div class="k">background</div><div class="v">${colorChip(SNAP.background)} (prior, not fact)</div>
+    <div class="k">symmetries</div><div class="v">${syms.length?syms.join(', '):'<span class="empty">none</span>'}</div>
+  </div>`;
+}
+
+refresh();
+</script>
+</body>
+</html>
