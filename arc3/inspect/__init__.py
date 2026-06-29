@@ -1,2 +1,2 @@
 from .snapshot import Snapshot, ObjectView, RelationView, GraphView
-from .build import build_snapshot
+from .snapshot_builder import build_snapshot

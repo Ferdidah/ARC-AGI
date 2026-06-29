@@ -31,8 +31,8 @@ from typing import Optional
 
 import numpy as np
 
-from ..substrate.grid import Grid
-from .build import build_snapshot
+from ..raw.grid import Grid
+from .snapshot_builder import build_snapshot
 from .session import LiveGame, Action, RandomSource
 
 STATIC_DIR = Path(__file__).parent / "static"

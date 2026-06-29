@@ -1,24 +1,33 @@
 """
-Segmentation (A4 objectness) — grouping cells into candidate objects.
+segmentation.py — different ways of grouping grid cells into objects.
 
-There is no single 'correct' segmentation; there are COMPETING hypotheses, and
-which one is right is decided later (by motion / common-fate and by MDL over the
-dynamics). This module provides the hypotheses as separate, deterministic
-functions so the system can hold several at once:
+There's no single "correct" way to decide what counts as one object — that's
+a question with COMPETING valid answers, and which answer is right gets
+decided later, by watching what actually moves together when an action is
+taken, and by seeing which grouping makes the game's rules simplest to state.
+This file provides two such grouping methods, each as a separate function, so
+the system can try more than one and compare:
 
-    - connected_components(connectivity=4|8): maximal same-colour touching blobs
-      (the 'proximity + similarity' hypothesis).
-    - color_classes(): all cells of a colour as one object, regardless of
-      contiguity (the 'similarity only' hypothesis).
+    - connected_components(): cells of the same color count as one object
+      only if they're actually touching (4-way or 8-way). This assumes
+      "things that are near each other and the same color are one object."
 
-Background handling: cells of the background colour are EXCLUDED from objects
-(background is the substrate things move through). Background is a functional
-notion the system must confirm; here we accept it as a parameter, and offer
-`guess_background` as the cheap most-common-colour PRIOR (explicitly a guess).
+    - color_classes(): ALL cells of a given color count as one object,
+      anywhere on the grid, touching or not. This assumes "things that look
+      the same are one object" — useful when a color represents a "kind" of
+      thing that's scattered across the board rather than one solid shape.
 
-Common-fate (grouping by shared motion) is the strongest cue but requires two
-frames + an action, so it is NOT here — it belongs to the delta-interpreter
-(module 2). This module is single-frame only.
+Background handling: whichever color is designated as "background" gets
+skipped entirely — it's treated as empty space that objects sit on top of,
+not an object itself. guess_background() is a cheap fallback that just picks
+the most common color as a guess; it's explicitly a guess, not a fact, and
+something later in the pipeline should confirm or correct it.
+
+NOTE: the strongest way to group cells — by what actually moves together
+when you take an action — is NOT done here, because it needs two frames and
+an action to compare, not just one. That logic belongs in a later step (the
+delta/diff-based interpreter), not in this file. This file only ever looks
+at a single, still frame.
 """
 
 from __future__ import annotations
@@ -27,7 +36,7 @@ from collections import deque
 
 import numpy as np
 
-from ...substrate.grid import Grid
+from ...raw.grid import Grid
 from ...model.object import GridObject
 
 _NEI4 = [(-1, 0), (1, 0), (0, -1), (0, 1)]

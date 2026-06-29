@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..substrate.grid import Grid
+from ..raw.grid import Grid
 from ..primitives.scene import build_scene
 from ..primitives.descriptive import topology, measurement
 from .palette import ARC_COLORS  # self-contained palette (not coupled to viz)

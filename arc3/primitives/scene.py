@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..substrate.grid import Grid
+from ..raw.grid import Grid
 from ..model.object import GridObject
 from .descriptive import segmentation, topology
 

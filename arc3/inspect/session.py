@@ -22,8 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Protocol
 
-from ..substrate.grid import Grid
-from ..substrate.observation import Observation
+from ..raw.grid import Grid
+from ..raw.observation import Observation
 
 
 # --------------------------------------------------------------------------- #

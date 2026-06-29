@@ -1,10 +1,19 @@
 """
-Topology & spatial relations (A3).
+topology.py — spatial relationships BETWEEN objects, and symmetry of the
+whole grid.
 
-Relations that come for free from positions on the grid: adjacency between
-objects, alignment (sharing a row/column band), and grid-level SYMMETRY
-(mirror / rotation). Symmetry is load-bearing because several goal-types are
-written over it (symmetrize, match). All deterministic.
+These are relations you get "for free" just from where things are positioned:
+    - adjacency        -> are two objects touching?
+    - alignment        -> do two objects share a row or column?
+    - grid symmetry     -> is the whole grid mirror-symmetric, or the same
+                           after a 90/180-degree rotation?
+
+Symmetry matters beyond just being a nice fact to know: several possible game
+goals are defined directly in terms of it (e.g. "make this side of the grid
+mirror the other side"), so this isn't just descriptive — it's something a
+goal-checker may need to query directly.
+
+Everything here is exact and deterministic — no guessing involved.
 """
 
 from __future__ import annotations
@@ -12,7 +21,7 @@ from __future__ import annotations
 import numpy as np
 
 from ...model.object import GridObject
-from ...substrate.grid import Grid
+from ...raw.grid import Grid
 
 _NEI4 = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 _NEI8 = _NEI4 + [(-1, -1), (-1, 1), (1, -1), (1, 1)]

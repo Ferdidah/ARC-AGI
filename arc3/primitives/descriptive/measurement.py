@@ -1,19 +1,46 @@
 """
-Measurement (A2) + Frame-of-reference (A5) — the RELATIONAL quantities.
+measurement.py — measurements that require comparing TWO things (two objects,
+or an object and the grid), as opposed to measurements of a single object
+alone.
 
-Per-object geometry (area, bbox, centroid, width, height) lives on GridObject
-itself, because it is a pure function of one object's cells. This module holds
-the measurements that need a SECOND thing — another object, or a declared
-reference frame — which is exactly why A5 (frame-of-reference) is inseparable
-from A2: "distance" and "offset" are meaningless until you say "to what".
+A single object's own geometry (its area, bounding box, center, width,
+height) lives directly on the GridObject itself, since those can be computed
+from that one object's cells alone. Everything in THIS file needs a second
+reference point to mean anything — e.g. "distance" or "position relative to"
+only make sense once you say distance/relative TO WHAT. That's why these
+functions all take two arguments (two objects, or an object and the grid).
 
-All deterministic. No semantics: these report numbers, not meanings.
+Object-to-object:
+    centroid_offset()              -> direction + distance from one object's
+                                       center to another's
+    manhattan_centroid_distance()  -> straight-line-ish distance between centers
+    min_cell_distance()            -> closest distance between the two
+                                       objects' actual cells (not just centers)
+    bbox_contains()                -> does one object's bounding rectangle
+                                       fully contain another's? (NOTE: this
+                                       checks rectangles only — it does NOT
+                                       check if one object is truly enclosed
+                                       inside another, e.g. inside a ring shape)
+
+Object-to-grid:
+    distance_to_edges()  -> gap between an object and each edge of the grid
+    touches_edge()       -> is the object touching any edge at all?
+
+Color-as-position:
+    color_scale_value()  -> where does this color fall on an ordered scale
+                            (e.g. low to high)? Only relevant for the rare
+                            game where color values represent an ordered
+                            quantity (like a fill level) rather than just a
+                            category/label.
+
+Everything here is exact and deterministic — these functions report
+measured numbers, not guesses about meaning.
 """
 
 from __future__ import annotations
 
 from ...model.object import GridObject
-from ...substrate.grid import Grid
+from ...raw.grid import Grid
 
 
 # ---- object <-> object ------------------------------------------------------
