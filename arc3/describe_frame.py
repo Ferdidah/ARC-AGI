@@ -1,5 +1,5 @@
 """
-inspect_frame.py — dump EVERYTHING the perception layer currently finds.
+describe_frame.py — dump EVERYTHING the perception layer currently finds.
 
 Shows the full descriptive picture (L0->L1): substrate facts, per-object
 measurements, objectness, and ALL relational/topology primitives (adjacency,
@@ -11,9 +11,9 @@ What it does NOT show — because these layers don't exist yet:
   - the interaction graph   : L2, later
 
 Put this in the PROJECT ROOT (next to explore.py). Run:
-    python inspect_frame.py --paste
-    python inspect_frame.py --recording game.jsonl --index 5
-    python inspect_frame.py --paste --connectivity 8
+    python describe_frame.py --paste
+    python describe_frame.py --recording game.jsonl --index 5
+    python describe_frame.py --paste --connectivity 8
 """
 
 import argparse

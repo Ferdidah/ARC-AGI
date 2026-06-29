@@ -1,21 +1,21 @@
 """
-explore.py — visualize ANY ARC-AGI-3 frame.
+visualize_frame.py — visualize ANY ARC-AGI-3 frame.
 
 Point it at a real recording, a live game, or a frame you paste in.
 Put this file in the PROJECT ROOT (next to demo_viz.py / README.md).
 
 Usage:
     # 1) visualize every frame in a recording (JSONL the SDK saved)
-    python explore.py --recording path/to/game.jsonl
+    python visualize_frame.py --recording path/to/game.jsonl
 
     #    ...just one frame from it (e.g. frame index 10):
-    python explore.py --recording path/to/game.jsonl --index 10
+    python visualize_frame.py --recording path/to/game.jsonl --index 10
 
     # 2) pull frames live from a game (needs SDK + API key)
-    python explore.py --game ls20 --steps 40
+    python visualize_frame.py --game ls20 --steps 40
 
     # 3) visualize a frame you paste into this file (see paste_frame below)
-    python explore.py --paste
+    python visualize_frame.py --paste
 
 Options that apply to all modes:
     --bg auto      background colour: 'auto' (most common), 'none', or an int
@@ -32,7 +32,7 @@ from arc3.viz import show_scene, compare_segmentations, show_delta
 
 
 # --------------------------------------------------------------------------- #
-# OPTION 3: paste a frame here and run `python explore.py --paste`
+# OPTION 3: paste a frame here and run `python visualize_frame.py --paste`
 # Replace this with any grid you want — a list of rows of ints 0..15.
 # --------------------------------------------------------------------------- #
 def paste_frame() -> Grid:

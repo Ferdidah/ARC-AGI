@@ -1,19 +1,23 @@
 """
-Grid — the L0 substrate.
+Grid — the raw, unprocessed grid data for one ARC-AGI-3 frame.
 
-An ARC-AGI-3 frame is a grid (up to 64x64) of 4-bit colour indices (ints 0-15),
-with a (0,0) = TOP-LEFT coordinate system.
+A frame is a grid (up to 64x64) of color values (integers 0-15), with
+(0,0) at the TOP-LEFT.
 
-CRITICAL coordinate convention (a classic bug source — read this):
-    - We index cells as (row, col) == (y, x).
+CRITICAL coordinate convention (a classic source of bugs — read this):
+    - Cells are indexed as (row, col), which is the same as (y, x).
     - The API's ACTION6 click takes {"x": col, "y": row}.
     - So `grid[row, col]` and a click at `x=col, y=row` refer to the SAME cell.
-    - Helpers below make the row/col <-> x/y mapping explicit so nothing guesses.
+    - The helper functions below make the row/col <-> x/y conversion explicit,
+      so nothing has to guess which order to use.
 
-A Grid is treated as immutable: it wraps a read-only numpy array, and is
-hashable so it can live in closed/visited sets later (search, dedup, deltas).
-This object carries NO semantics — it is just colours in space. Meaning is
-added in higher layers (L1 objects, L2 graph).
+A Grid is immutable: it wraps a read-only numpy array and is hashable, so it
+can be stored in sets later (e.g. for tracking visited states during search,
+or for detecting duplicate frames).
+
+This class holds ONLY colors and positions — no concept of "objects" or
+"meaning" exists at this level. Objects are built from this in a later step
+(see object.py).
 """
 
 from __future__ import annotations

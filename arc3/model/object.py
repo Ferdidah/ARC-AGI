@@ -1,23 +1,26 @@
 """
-GridObject — an L1 object: a BUNDLE of stacked descriptive primitives.
+GridObject represents one detected object on the grid — for example, a
+single contiguous red block.
 
-A single object simultaneously carries primitives from several descriptive
-layers at once:
-    A1 substrate   -> colour(s), and (later) a colour-role
-    A2 measurement -> area, bbox, centroid, width, height   (computed here)
-    A4 objectness  -> the cell mask + a stable identity + which grouping rule
-                      produced it
-plus two semantic slots that the DETERMINISTIC extractors leave blank and that
-ML/inference fill in later:
-    role_distribution -> {role: prob}, e.g. {"wall": 0.6, "pushable": 0.3, ...}
-    confidence        -> scalar belief in this object's current labelling
+It stores only what can be directly observed from the cells themselves:
+which cells belong to it, what color(s) it has, and geometric measurements
+(area, bounding box, center, width, height) that are derived automatically
+from those cells. It also records which segmentation method was used to
+find it, since there may be more than one valid way to group cells into
+objects.
 
-Geometry measurements are cached_property functions of the cell mask, so they
-can never go stale relative to the cells. Anything RELATIONAL (distance to
-another object, containment, alignment) is NOT here — it lives in topology,
-because it depends on a second object or a reference frame.
+Two fields are intentionally left empty at this stage:
+    role_distribution -> a guess at what the object DOES in the game
+                         (e.g. {"wall": 0.6, "pushable": 0.3}), to be filled
+                         in later by watching how it behaves across actions
+    confidence        -> how sure we are that this object's current
+                         description is correct
 
-This is a pure data record. It performs no inference.
+This class makes no guesses and does no reasoning — it only describes what
+is visible. Anything that requires comparing this object to ANOTHER object
+(distance, containment, alignment) does not belong here, since it requires
+more than one object to make sense. That logic lives elsewhere (in a
+topology/relations module).
 """
 
 from __future__ import annotations
@@ -36,8 +39,8 @@ class GridObject:
     role_distribution: dict[str, float] = field(default_factory=dict)
     confidence: float = 0.0
 
-    # ---- A2 measurement: pure functions of the cell mask ---------------------
-
+    # ---- geometric measurements, computed directly from the cell positions ----
+    
     @cached_property
     def area(self) -> int:
         """Number of cells (size)."""
