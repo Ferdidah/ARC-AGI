@@ -226,7 +226,7 @@ function renderActionBar(){
     return;
   }
   // human mode: render a button per available action
-  const labels = {1:'◀ A1',2:'▶ A2',3:'▲ A3',4:'▼ A4',5:'A5 �(interact)',6:'A6 (click)'};
+  const labels = {1:'A1', 2:'A2', 3:'A3', 4:'A4', 5:'A5 (interact)', 6:'A6 (click)'};
   const avail = SNAP.available_actions||[];
   let html = avail.map(a=>{
     if(a===6) return `<button onclick="toggleClick()">A6 click mode</button>`;
